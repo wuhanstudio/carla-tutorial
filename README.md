@@ -19,4 +19,4 @@ python 04_open3d_library.py
 
 ### Gallery
 
-![](doc/01_get_started.git)
+![](docs/01_get_started.gif)
