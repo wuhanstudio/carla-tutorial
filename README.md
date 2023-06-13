@@ -19,4 +19,10 @@ python 04_open3d_library.py
 
 ### Gallery
 
+Example 01: Get Started
+
 ![](docs/01_get_started.gif)
+
+Example 02: RGB Camera
+
+![](docs/02_RGB_camera.gif)
