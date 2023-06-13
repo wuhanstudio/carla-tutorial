@@ -30,3 +30,7 @@ Example 02: RGB Camera
 Example 03: More Cameras
 
 ![](docs/03_more_cameras.gif)
+
+Example 04: Open3D Lidar
+
+![](docs/04_open3d_lidar.gif)
