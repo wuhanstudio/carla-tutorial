@@ -26,3 +26,7 @@ Example 01: Get Started
 Example 02: RGB Camera
 
 ![](docs/02_RGB_camera.gif)
+
+Example 03: More Cameras
+
+![](docs/03_more_cameras.gif)
