@@ -87,7 +87,6 @@ for ind in route_2_indices:
     spawn_points[ind].location
     world.debug.draw_string(spawn_points[ind].location, str(ind), life_time=60, color=carla.Color(0,0,255))
 
-
 # Set delay to create gap between spawn times
 spawn_delay = 20
 counter = spawn_delay

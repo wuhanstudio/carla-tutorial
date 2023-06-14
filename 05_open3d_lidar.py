@@ -31,10 +31,8 @@ vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
 # Autopilot
 vehicle.set_autopilot(True) 
 
-# Move the spectator behind the vehicle 
+# Get the world spectator
 spectator = world.get_spectator() 
-transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4,z=50)), carla.Rotation(pitch=-90)) 
-spectator.set_transform(transform) 
 
 ## Part 2
 
