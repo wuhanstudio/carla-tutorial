@@ -1,6 +1,8 @@
 import time
 
 import carla
+
+import queue
 import random
 
 import cv2
@@ -109,8 +111,8 @@ def radar_callback(data, point_list):
     point_list.colors = o3d.utility.Vector3dVector(int_color)
     
 # Camera callback
-def camera_callback(image, data_dict):
-    data_dict['image'] = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4)) 
+def camera_callback(image, rgb_camera_queue):
+    rgb_camera_queue.put(np.reshape(np.copy(image.raw_data), (image.height, image.width, 4)))
 
 # Set up LIDAR and RADAR, parameters are to assisst visualisation
 
@@ -142,15 +144,16 @@ camera = world.spawn_actor(camera_bp, camera_init_trans, attach_to=vehicle)
 point_list = o3d.geometry.PointCloud()
 radar_list = o3d.geometry.PointCloud()
 
-# Set up dictionary for camera data
+# Set up Queue for camera data
 image_w = camera_bp.get_attribute("image_size_x").as_int()
 image_h = camera_bp.get_attribute("image_size_y").as_int()
-camera_data = {'image': np.zeros((image_h, image_w, 4))} 
+
+rgb_camera_queue = queue.Queue()
 
 # Start sensors
 lidar.listen(lambda data: lidar_callback(data, point_list))
 radar.listen(lambda data: radar_callback(data, radar_list))
-camera.listen(lambda image: camera_callback(image, camera_data))
+camera.listen(lambda image: camera_callback(image, rgb_camera_queue))
 
 # OpenCV window for camera
 cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
@@ -204,7 +207,7 @@ while True:
         time.sleep(0.005)
         frame += 1
 
-        cv2.imshow('RGB Camera', camera_data['image'])
+        cv2.imshow('RGB Camera', rgb_camera_queue.get())
 
         # Move the spectator to the top of the vehicle 
         transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4,z=50)), carla.Rotation(yaw=-180, pitch=-90)) 
