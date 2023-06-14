@@ -3,6 +3,8 @@
 
 ### Quick Start
 
+- Carla Version: 0.9.14 or other versions with compatible APIs
+
 ```
 # Start the Carla Simulator
 ./CarlaUE4.sh -quality-level=epic -resx=800 -resy=600
