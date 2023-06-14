@@ -18,6 +18,7 @@ python 02_sync_mode.py
 python 03_RGB_camera.py
 python 04_more_cameras.py
 python 05_open3d_library.py
+python 06_trafic_manager.py 
 ```
 
 ### Gallery
