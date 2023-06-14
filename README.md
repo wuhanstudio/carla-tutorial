@@ -20,6 +20,7 @@ python 04_more_cameras.py
 python 05_open3d_library.py
 python 06_trafic_manager.py
 python 07_3d_bounding_boxes.py
+python 08_draw_waypoints.py
 ```
 
 ### Gallery
@@ -51,3 +52,7 @@ Example 06: Traffic Manager
 Example 07: 3D Bounding Boxes
 
 ![](docs/07_3d_bounding_boxes.gif)
+
+Example 08: Dray Waypoints
+
+![](docs/08_draw_waypoints.gif)
