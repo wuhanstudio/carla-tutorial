@@ -1,5 +1,7 @@
 import carla
+
 import random
+import queue
 
 import cv2
 import numpy as np
@@ -20,9 +22,6 @@ spawn_points = world.get_map().get_spawn_points()
 # Spawn a vehicle
 vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
 
-while vehicle is None:
-    vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
-
 # Autopilot
 vehicle.set_autopilot(True) 
 
@@ -41,20 +40,20 @@ rgb_camera_bp = world.get_blueprint_library().find('sensor.camera.rgb')
 camera = world.spawn_actor(rgb_camera_bp, camera_init_trans, attach_to=vehicle)
 
 # Callback stores sensor data in a dictionary for use outside callback                         
-def camera_callback(image, data_dict):
-    data_dict['rgb_image'] = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
+def camera_callback(image, rgb_image_queue):
+    rgb_image_queue.put(np.reshape(np.copy(image.raw_data), (image.height, image.width, 4)))
 
 # Get gamera dimensions and initialise dictionary                       
 image_w = rgb_camera_bp.get_attribute("image_size_x").as_int()
 image_h = rgb_camera_bp.get_attribute("image_size_y").as_int()
-camera_data = {'rgb_image': np.zeros((image_h, image_w, 4))}
 
 # Start camera recording
-camera.listen(lambda image: camera_callback(image, camera_data))
+rgb_image_queue = queue.Queue()
+camera.listen(lambda image: camera_callback(image, rgb_image_queue))
 
 # OpenCV named window for rendering
 cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
-cv2.imshow('RGB Camera', camera_data['rgb_image'])
+cv2.imshow('RGB Camera', rgb_image_queue.get())
 cv2.waitKey(1)
 
 # Clear the spawned vehicle and camera
@@ -76,7 +75,7 @@ def clear():
 while True:
     try:
         # Display RGB camera image
-        cv2.imshow('RGB Camera', camera_data['rgb_image'])
+        cv2.imshow('RGB Camera', rgb_image_queue.get())
 
         # Move the spectator to the top of the vehicle 
         transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4,z=50)), carla.Rotation(yaw=-180, pitch=-90)) 

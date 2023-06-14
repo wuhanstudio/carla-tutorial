@@ -26,9 +26,6 @@ spawn_points = world.get_map().get_spawn_points()
 # Spawn a vehicle
 vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
 
-while vehicle is None:
-    vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
-
 # Autopilot
 vehicle.set_autopilot(True) 
 
