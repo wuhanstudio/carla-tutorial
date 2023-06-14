@@ -51,8 +51,6 @@ camera.listen(lambda image: camera_callback(image, rgb_image_queue))
 
 # OpenCV named window for rendering
 cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
-cv2.imshow('RGB Camera', rgb_image_queue.get())
-cv2.waitKey(1)
 
 # Clear the spawned vehicle and camera
 def clear():

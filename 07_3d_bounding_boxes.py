@@ -1,10 +1,10 @@
 import carla
-import math
-import random
-import time
+
 import queue
-import numpy as np
+import random
+
 import cv2
+import numpy as np
 
 # Part 1
 
@@ -37,6 +37,8 @@ world.apply_settings(settings)
 # Create a queue to store and retrieve the sensor data
 image_queue = queue.Queue()
 camera.listen(image_queue.put)
+
+# Part 2
 
 def build_projection_matrix(w, h, fov):
     focal = w / (2.0 * np.tan(fov * np.pi / 360.0))
