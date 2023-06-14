@@ -41,3 +41,7 @@ Example 04: More Cameras
 Example 05: Open3D Lidar
 
 ![](docs/05_open3d_lidar.gif)
+
+Example 06: Traffic Manager
+
+![](docs/06_traffic_manager.gif)
