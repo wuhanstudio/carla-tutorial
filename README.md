@@ -18,7 +18,8 @@ python 02_sync_mode.py
 python 03_RGB_camera.py
 python 04_more_cameras.py
 python 05_open3d_library.py
-python 06_trafic_manager.py 
+python 06_trafic_manager.py
+python 07_3d_bounding_boxes.py
 ```
 
 ### Gallery
@@ -46,3 +47,7 @@ Example 05: Open3D Lidar
 Example 06: Traffic Manager
 
 ![](docs/06_traffic_manager.gif)
+
+Example 07: 3D Bounding Boxes
+
+![](docs/07_3d_bounding_boxes.gif)

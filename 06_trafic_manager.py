@@ -60,6 +60,7 @@ spawn_points = world.get_map().get_spawn_points()
 
 # Route 1
 spawn_point_1 =  spawn_points[32]
+
 # Create route 1 from the chosen spawn points
 route_1_indices = [129, 28, 124, 33, 97, 119, 58, 154, 147]
 route_1 = []
