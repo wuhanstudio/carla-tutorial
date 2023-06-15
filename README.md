@@ -54,7 +54,7 @@ Example 07: 3D Bounding Boxes
 
 ![](docs/07_3d_bounding_boxes.gif)
 
-Example 08: Dray Waypoints
+Example 08: Draw Waypoints
 
 ![](docs/08_draw_waypoints.gif)
 
