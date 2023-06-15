@@ -1,8 +1,8 @@
-## Carla Tutorials
+## Carla Tutorial (Python API)
 
 [![](https://img.shields.io/badge/Documentation-brightgreen)]([https://blog.wuhanstudio.uk/](https://blog.wuhanstudio.uk/blog/carla-tutorial/))
 
-- Carla Version: 0.9.14 or other versions with compatible APIs
+Please use Carla version 0.9.14 or other versions with compatible APIs
 
 ```
 # Start the Carla Simulator
