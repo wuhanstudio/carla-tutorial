@@ -21,6 +21,7 @@ python 05_open3d_library.py
 python 06_trafic_manager.py
 python 07_3d_bounding_boxes.py
 python 08_draw_waypoints.py
+python 09_basic_navigation.py
 ```
 
 ### Gallery
@@ -56,3 +57,7 @@ Example 07: 3D Bounding Boxes
 Example 08: Dray Waypoints
 
 ![](docs/08_draw_waypoints.gif)
+
+Example 09: Basic Navigation
+
+![](docs/09_basic_navigation.gif)
