@@ -137,8 +137,6 @@ def clear():
 while True:
     try:
 
-        world.tick()
-
         # Imshow renders sensor data to display
         top_row = np.hstack((rgb_image_queue.get(), seg_image_queue.get(), ins_image_queue.get()))
         lower_row = np.hstack((depth_image_queue.get(), dvs_image_queue.get(), opt_image_queue.get()))
@@ -158,4 +156,3 @@ while True:
     except KeyboardInterrupt as e:
         clear()
         break
-
