@@ -1,9 +1,8 @@
-## Carla Tutorials
+## Carla Tutorial (Python API)
 
+[![](https://img.shields.io/badge/Documentation-brightgreen)](https://blog.wuhanstudio.uk/blog/carla-tutorial/)
 
-### Quick Start
-
-- Carla Version: 0.9.14 or other versions with compatible APIs
+Please use Carla version 0.9.14 or other versions with compatible APIs
 
 ```
 # Start the Carla Simulator
@@ -54,7 +53,7 @@ Example 07: 3D Bounding Boxes
 
 ![](docs/07_3d_bounding_boxes.gif)
 
-Example 08: Dray Waypoints
+Example 08: Draw Waypoints
 
 ![](docs/08_draw_waypoints.gif)
 
