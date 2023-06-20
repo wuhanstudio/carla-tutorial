@@ -41,7 +41,6 @@ from carla import ColorConverter as cc
 
 import argparse
 import datetime
-import logging
 import math
 import random
 import re
@@ -94,31 +93,6 @@ def get_actor_display_name(actor, truncate=250):
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
-def get_actor_blueprints(world, filter, generation):
-    bps = world.get_blueprint_library().filter(filter)
-
-    if generation.lower() == "all":
-        return bps
-
-    # If the filter returns only one bp, we assume that this one needed
-    # and therefore, we ignore the generation
-    if len(bps) == 1:
-        return bps
-
-    try:
-        int_generation = int(generation)
-        # Check if generation is in available generations
-        if int_generation in [1, 2]:
-            bps = [x for x in bps if int(x.get_attribute('generation')) == int_generation]
-            return bps
-        else:
-            print("   Warning! Actor Generation is not valid. No actor will be spawned.")
-            return []
-    except:
-        print("   Warning! Actor Generation is not valid. No actor will be spawned.")
-        return []
-
-
 # ==============================================================================
 # -- World ---------------------------------------------------------------------
 # ==============================================================================
@@ -128,7 +102,6 @@ class World(object):
     def __init__(self, carla_world, hud, args):
         self.world = carla_world
         self.sync = args.sync
-        self.actor_role_name = args.rolename
         try:
             self.map = self.world.get_map()
         except RuntimeError as error:
@@ -144,7 +117,6 @@ class World(object):
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = args.filter
-        self._actor_generation = args.generation
         self._gamma = args.gamma
         self.restart()
         self.world.on_tick(hud.on_world_tick)
@@ -172,8 +144,7 @@ class World(object):
         cam_index = self.camera_manager.index if self.camera_manager is not None else 0
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         # Get a random blueprint.
-        blueprint = random.choice(get_actor_blueprints(self.world, self._actor_filter, self._actor_generation))
-        blueprint.set_attribute('role_name', self.actor_role_name)
+        blueprint = random.choice(self.world.get_blueprint_library().filter(self._actor_filter))
         if blueprint.has_attribute('terramechanics'):
             blueprint.set_attribute('terramechanics', 'true')
         if blueprint.has_attribute('color'):
@@ -792,8 +763,8 @@ def game_loop(args):
     original_settings = None
 
     try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(2000.0)
+        client = carla.Client('localhost', 2000)
+        client.set_timeout(10.0)
 
         sim_world = client.get_world()
         if args.sync:
@@ -857,62 +828,22 @@ def main():
     argparser = argparse.ArgumentParser(
         description='CARLA Manual Control Client')
     argparser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        dest='debug',
-        help='print debug information')
-    argparser.add_argument(
-        '--host',
-        metavar='H',
-        default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
-        '-p', '--port',
-        metavar='P',
-        default=2000,
-        type=int,
-        help='TCP port to listen to (default: 2000)')
-    argparser.add_argument(
         '-a', '--autopilot',
         action='store_true',
         help='enable autopilot')
-    argparser.add_argument(
-        '--res',
-        metavar='WIDTHxHEIGHT',
-        default='1280x720',
-        help='window resolution (default: 1280x720)')
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
         default='vehicle.*',
         help='actor filter (default: "vehicle.*")')
     argparser.add_argument(
-        '--generation',
-        metavar='G',
-        default='2',
-        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
-    argparser.add_argument(
-        '--rolename',
-        metavar='NAME',
-        default='hero',
-        help='actor role name (default: "hero")')
-    argparser.add_argument(
-        '--gamma',
-        default=2.2,
-        type=float,
-        help='Gamma correction of the camera (default: 2.2)')
-    argparser.add_argument(
         '--sync',
         action='store_true',
         help='Activate synchronous mode execution')
     args = argparser.parse_args()
 
-    args.width, args.height = [int(x) for x in args.res.split('x')]
-
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
-
-    logging.info('listening to server %s:%s', args.host, args.port)
+    args.gamma = 2.2
+    args.width, args.height = 1280, 720
 
     print(__doc__)
 
