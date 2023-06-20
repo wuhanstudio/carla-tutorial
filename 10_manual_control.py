@@ -20,17 +20,18 @@ from __future__ import print_function
 
 import os
 import sys
+import argparse
 
 import carla
-
 from carla import ColorConverter as cc
 
-import argparse
+import re
 import datetime
+import weakref
+
 import math
 import random
-import re
-import weakref
+import numpy as np
 
 try:
     import pygame
@@ -38,36 +39,32 @@ try:
     from pygame.locals import K_DOWN
     from pygame.locals import K_LEFT
     from pygame.locals import K_RIGHT
+
     from pygame.locals import K_ESCAPE
+
     from pygame.locals import K_SPACE
     from pygame.locals import K_BACKSPACE
+
     from pygame.locals import K_w
     from pygame.locals import K_a
     from pygame.locals import K_s
     from pygame.locals import K_d
+
+    from pygame.locals import K_q
     from pygame.locals import K_c
     from pygame.locals import K_p
-    from pygame.locals import K_f
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
-
-try:
-    import numpy as np
-except ImportError:
-    raise RuntimeError('cannot import numpy, make sure numpy package is installed')
-
 
 # ==============================================================================
 # -- Global functions ----------------------------------------------------------
 # ==============================================================================
-
 
 def find_weather_presets():
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
     name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
-
 
 def get_actor_display_name(actor, truncate=250):
     name = ' '.join(actor.type_id.replace('_', '.').title().split('.')[1:])
@@ -76,7 +73,6 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 # -- World ---------------------------------------------------------------------
 # ==============================================================================
-
 
 class World(object):
     def __init__(self, carla_world, hud, args):
@@ -105,9 +101,7 @@ class World(object):
     def restart(self):
         self.player_max_speed = 1.589
         self.player_max_speed_fast = 3.713
-        # Keep same camera config if the camera manager exists.
-        cam_index = self.camera_manager.index if self.camera_manager is not None else 0
-        cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
+
         # Get a random blueprint.
         blueprint = random.choice(self.world.get_blueprint_library().filter("vehicle.*"))
         if blueprint.has_attribute('terramechanics'):
@@ -147,9 +141,10 @@ class World(object):
         # Set up the sensors.
         self.gnss_sensor = GnssSensor(self.player)
         self.imu_sensor = IMUSensor(self.player)
+
         self.camera_manager = CameraManager(self.player, self.hud, self._gamma)
-        self.camera_manager.transform_index = cam_pos_index
-        self.camera_manager.set_sensor(cam_index, notify=False)
+        self.camera_manager.init_sensor()
+
         actor_type = get_actor_display_name(self.player)
         self.hud.notification(actor_type)
 
@@ -184,7 +179,6 @@ class World(object):
     def destroy_sensors(self):
         self.camera_manager.sensor.destroy()
         self.camera_manager.sensor = None
-        self.camera_manager.index = None
 
     def destroy(self):
         sensors = [
@@ -211,6 +205,7 @@ class KeyboardControl(object):
         if isinstance(world.player, carla.Vehicle):
             self._control = carla.VehicleControl()
             world.player.set_autopilot(self._autopilot_enabled)
+
         self._steer_cache = 0.0
 
     def parse_events(self, client, world, clock, sync_mode):
@@ -229,7 +224,8 @@ class KeyboardControl(object):
                         world.restart()
                 elif event.key == K_c:
                     world.next_weather()
-
+                elif event.key == K_q:
+                    self._control.gear = 1 if self._control.reverse else -1
                 if isinstance(self._control, carla.VehicleControl):
                     if event.key == K_p:
                         if not self._autopilot_enabled and not sync_mode:
@@ -315,9 +311,11 @@ class HUD(object):
         self._notifications.tick(world, clock)
         if not self._show_info:
             return
+
         t = world.player.get_transform()
         v = world.player.get_velocity()
         c = world.player.get_control()
+
         compass = world.imu_sensor.compass
         heading = 'N' if compass > 270.5 or compass < 89.5 else ''
         heading += 'S' if 90.5 < compass < 269.5 else ''
@@ -341,6 +339,7 @@ class HUD(object):
             'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (world.gnss_sensor.lat, world.gnss_sensor.lon)),
             'Height:  % 18.0f m' % t.location.z,
             '']
+
         if isinstance(c, carla.VehicleControl):
             self._info_text += [
                 ('Throttle:', c.throttle, 0.0, 1.0),
@@ -359,14 +358,9 @@ class HUD(object):
                 vehicle_type = get_actor_display_name(vehicle, truncate=22)
                 self._info_text.append('% 4dm %s' % (d, vehicle_type))
 
-    def toggle_info(self):
-        self._show_info = not self._show_info
-
     def notification(self, text, seconds=2.0):
         self._notifications.set_text(text, seconds=seconds)
 
-    def error(self, text):
-        self._notifications.set_text('Error: %s' % text, (255, 0, 0))
 
     def render(self, display):
         if self._show_info:
@@ -509,57 +503,36 @@ class CameraManager(object):
         self.surface = None
         self._parent = parent_actor
         self.hud = hud
+        self.gamma_correction = gamma_correction
+        self.sensors = [
+            ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
+        ]
+
+    def init_sensor(self):
+        world = self._parent.get_world()
+        bp_library = world.get_blueprint_library()
+
+        bp = bp_library.find('sensor.camera.rgb')
+        bp.set_attribute('image_size_x', str(self.hud.dim[0]))
+        bp.set_attribute('image_size_y', str(self.hud.dim[1]))
+        if bp.has_attribute('gamma'):
+            bp.set_attribute('gamma', str(self.gamma_correction))
+
         bound_x = 0.5 + self._parent.bounding_box.extent.x
         bound_y = 0.5 + self._parent.bounding_box.extent.y
         bound_z = 0.5 + self._parent.bounding_box.extent.z
         Attachment = carla.AttachmentType
 
-        self._camera_transforms = [
-            (carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0)), Attachment.SpringArmGhost),
-            (carla.Transform(carla.Location(x=+0.8*bound_x, y=+0.0*bound_y, z=1.3*bound_z)), Attachment.Rigid)
-        ]
-        self.transform_index = 1
-        self.sensors = [
-            ['sensor.camera.rgb', cc.Raw, 'Camera RGB', {}],
-        ]
-        world = self._parent.get_world()
-        bp_library = world.get_blueprint_library()
-        for item in self.sensors:
-            bp = bp_library.find(item[0])
-            if item[0].startswith('sensor.camera'):
-                bp.set_attribute('image_size_x', str(hud.dim[0]))
-                bp.set_attribute('image_size_y', str(hud.dim[1]))
-                if bp.has_attribute('gamma'):
-                    bp.set_attribute('gamma', str(gamma_correction))
-                for attr_name, attr_value in item[3].items():
-                    bp.set_attribute(attr_name, attr_value)
+        self.sensor = self._parent.get_world().spawn_actor(
+            bp,
+            carla.Transform(carla.Location(x=-2.0*bound_x, y=+0.0*bound_y, z=2.0*bound_z), carla.Rotation(pitch=8.0)),
+            attach_to=self._parent,
+            attachment_type=Attachment.SpringArmGhost)
 
-                for attr_name, attr_value in item[3].items():
-                    bp.set_attribute(attr_name, attr_value)
-
-            item.append(bp)
-        self.index = None
-
-    def set_sensor(self, index, notify=True, force_respawn=False):
-        index = index % len(self.sensors)
-        needs_respawn = True if self.index is None else \
-            (force_respawn or (self.sensors[index][2] != self.sensors[self.index][2]))
-        if needs_respawn:
-            if self.sensor is not None:
-                self.sensor.destroy()
-                self.surface = None
-            self.sensor = self._parent.get_world().spawn_actor(
-                self.sensors[index][-1],
-                self._camera_transforms[self.transform_index][0],
-                attach_to=self._parent,
-                attachment_type=self._camera_transforms[self.transform_index][1])
-            # We need to pass the lambda a weak reference to self to avoid
-            # circular reference.
-            weak_self = weakref.ref(self)
-            self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
-        if notify:
-            self.hud.notification(self.sensors[index][2])
-        self.index = index
+        # We need to pass the lambda a weak reference to self to avoid
+        # circular reference.
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda image: CameraManager._parse_image(weak_self, image))
 
     def render(self, display):
         if self.surface is not None:
@@ -571,7 +544,7 @@ class CameraManager(object):
         if not self:
             return
 
-        image.convert(self.sensors[self.index][1])
+        image.convert(cc.Raw)
         array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
         array = np.reshape(array, (image.height, image.width, 4))
         array = array[:, :, :3]
@@ -582,7 +555,6 @@ class CameraManager(object):
 # ==============================================================================
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
-
 
 def game_loop(args):
     pygame.init()
