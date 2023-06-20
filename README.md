@@ -21,6 +21,7 @@ python 06_trafic_manager.py
 python 07_3d_bounding_boxes.py
 python 08_draw_waypoints.py
 python 09_basic_navigation.py
+python 10_manual_control.py
 ```
 
 ### Gallery
@@ -60,3 +61,7 @@ Example 08: Draw Waypoints
 Example 09: Basic Navigation
 
 ![](docs/09_basic_navigation.gif)
+
+Example 10: Manual Control
+
+![](docs/10_manual_control.gif)
