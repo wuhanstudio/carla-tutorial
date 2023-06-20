@@ -20,8 +20,6 @@ Use ARROWS or WASD keys for control.
     Q            : toggle reverse
     Space        : hand-brake
     P            : toggle autopilot
-    M            : toggle manual transmission
-    ,/.          : gear up/down
     CTRL + W     : toggle constant velocity mode at 60 km/h
 
     L            : toggle next light type
@@ -428,15 +426,6 @@ class KeyboardControl(object):
                             self._ackermann_reverse *= -1
                             # Reset ackermann control
                             self._ackermann_control = carla.VehicleAckermannControl()
-                    elif event.key == K_m:
-                        self._control.manual_gear_shift = not self._control.manual_gear_shift
-                        self._control.gear = world.player.get_control().gear
-                        world.hud.notification('%s Transmission' %
-                                               ('Manual' if self._control.manual_gear_shift else 'Automatic'))
-                    elif self._control.manual_gear_shift and event.key == K_COMMA:
-                        self._control.gear = max(-1, self._control.gear - 1)
-                    elif self._control.manual_gear_shift and event.key == K_PERIOD:
-                        self._control.gear = self._control.gear + 1
                     elif event.key == K_p and not pygame.key.get_mods() & KMOD_CTRL:
                         if not self._autopilot_enabled and not sync_mode:
                             print("WARNING: You are currently in asynchronous mode and could "
@@ -633,9 +622,7 @@ class HUD(object):
                 ('Steer:', c.steer, -1.0, 1.0),
                 ('Brake:', c.brake, 0.0, 1.0),
                 ('Reverse:', c.reverse),
-                ('Hand brake:', c.hand_brake),
-                ('Manual:', c.manual_gear_shift),
-                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(c.gear, c.gear)]
+                ('Hand brake:', c.hand_brake)]
             if self._show_ackermann_info:
                 self._info_text += [
                     '',
