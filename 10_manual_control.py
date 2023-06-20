@@ -20,19 +20,11 @@ Use ARROWS or WASD keys for control.
     Q            : toggle reverse
     Space        : hand-brake
     P            : toggle autopilot
-    CTRL + W     : toggle constant velocity mode at 60 km/h
-
-    L            : toggle next light type
-    SHIFT + L    : toggle high beam
-    Z/X          : toggle right/left blinker
-    I            : toggle interior light
 
     TAB          : change sensor position
-    [1-9]        : change to sensor [1-9]
     C            : change weather (Shift+C reverse)
     Backspace    : change vehicle
 
-    O            : open/close all doors of vehicle
     T            : toggle vehicle's telemetry
 
     CTRL + P     : start replaying last recorded simulation
@@ -335,9 +327,7 @@ class KeyboardControl(object):
         if isinstance(world.player, carla.Vehicle):
             self._control = carla.VehicleControl()
             self._ackermann_control = carla.VehicleAckermannControl()
-            self._lights = carla.VehicleLightState.NONE
             world.player.set_autopilot(self._autopilot_enabled)
-            world.player.set_light_state(self._lights)
         elif isinstance(world.player, carla.Walker):
             self._control = carla.WalkerControl()
             self._autopilot_enabled = False
@@ -348,8 +338,6 @@ class KeyboardControl(object):
         world.hud.notification("Press 'H' or '?' for help.", seconds=4.0)
 
     def parse_events(self, client, world, clock, sync_mode):
-        if isinstance(self._control, carla.VehicleControl):
-            current_lights = self._lights
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
@@ -373,27 +361,6 @@ class KeyboardControl(object):
                     world.next_weather(reverse=True)
                 elif event.key == K_c:
                     world.next_weather()
-                elif event.key == K_w and (pygame.key.get_mods() & KMOD_CTRL):
-                    if world.constant_velocity_enabled:
-                        world.player.disable_constant_velocity()
-                        world.constant_velocity_enabled = False
-                        world.hud.notification("Disabled Constant Velocity Mode")
-                    else:
-                        world.player.enable_constant_velocity(carla.Vector3D(17, 0, 0))
-                        world.constant_velocity_enabled = True
-                        world.hud.notification("Enabled Constant Velocity Mode at 60 km/h")
-                elif event.key == K_o:
-                    try:
-                        if world.doors_are_open:
-                            world.hud.notification("Closing Doors")
-                            world.doors_are_open = False
-                            world.player.close_door(carla.VehicleDoor.All)
-                        else:
-                            world.hud.notification("Opening doors")
-                            world.doors_are_open = True
-                            world.player.open_door(carla.VehicleDoor.All)
-                    except Exception:
-                        pass
                 elif event.key == K_t:
                     if world.show_vehicle_telemetry:
                         world.player.show_debug_telemetry(False)
@@ -406,11 +373,6 @@ class KeyboardControl(object):
                             world.hud.notification("Enabled Vehicle Telemetry")
                         except Exception:
                             pass
-                elif event.key > K_0 and event.key <= K_9:
-                    index_ctrl = 0
-                    if pygame.key.get_mods() & KMOD_CTRL:
-                        index_ctrl = 9
-                    world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
 
                 if isinstance(self._control, carla.VehicleControl):
                     if event.key == K_f:
@@ -434,50 +396,12 @@ class KeyboardControl(object):
                         world.player.set_autopilot(self._autopilot_enabled)
                         world.hud.notification(
                             'Autopilot %s' % ('On' if self._autopilot_enabled else 'Off'))
-                    elif event.key == K_l and pygame.key.get_mods() & KMOD_CTRL:
-                        current_lights ^= carla.VehicleLightState.Special1
-                    elif event.key == K_l and pygame.key.get_mods() & KMOD_SHIFT:
-                        current_lights ^= carla.VehicleLightState.HighBeam
-                    elif event.key == K_l:
-                        # Use 'L' key to switch between lights:
-                        # closed -> position -> low beam -> fog
-                        if not self._lights & carla.VehicleLightState.Position:
-                            world.hud.notification("Position lights")
-                            current_lights |= carla.VehicleLightState.Position
-                        else:
-                            world.hud.notification("Low beam lights")
-                            current_lights |= carla.VehicleLightState.LowBeam
-                        if self._lights & carla.VehicleLightState.LowBeam:
-                            world.hud.notification("Fog lights")
-                            current_lights |= carla.VehicleLightState.Fog
-                        if self._lights & carla.VehicleLightState.Fog:
-                            world.hud.notification("Lights off")
-                            current_lights ^= carla.VehicleLightState.Position
-                            current_lights ^= carla.VehicleLightState.LowBeam
-                            current_lights ^= carla.VehicleLightState.Fog
-                    elif event.key == K_i:
-                        current_lights ^= carla.VehicleLightState.Interior
-                    elif event.key == K_z:
-                        current_lights ^= carla.VehicleLightState.LeftBlinker
-                    elif event.key == K_x:
-                        current_lights ^= carla.VehicleLightState.RightBlinker
 
         if not self._autopilot_enabled:
             if isinstance(self._control, carla.VehicleControl):
                 self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
                 self._control.reverse = self._control.gear < 0
-                # Set automatic control-related vehicle lights
-                if self._control.brake:
-                    current_lights |= carla.VehicleLightState.Brake
-                else: # Remove the Brake flag
-                    current_lights &= ~carla.VehicleLightState.Brake
-                if self._control.reverse:
-                    current_lights |= carla.VehicleLightState.Reverse
-                else: # Remove the Reverse flag
-                    current_lights &= ~carla.VehicleLightState.Reverse
-                if current_lights != self._lights: # Change the light state only if necessary
-                    self._lights = current_lights
-                    world.player.set_light_state(carla.VehicleLightState(self._lights))
+
                 # Apply control
                 if not self._ackermann_enabled:
                     world.player.apply_control(self._control)
