@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 import sys
-import argparse
 
 import carla
 from carla import ColorConverter as cc
@@ -85,18 +84,20 @@ class World(object):
             print('  The server could not send the OpenDRIVE (.xodr) file:')
             print('  Make sure it exists, has the same name of your town, and is correct.')
             sys.exit(1)
+
         self.hud = hud
         self.player = None
+
         self.gnss_sensor = None
         self.imu_sensor = None
         self.camera_manager = None
+
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._gamma = args.gamma
+
         self.restart()
         self.world.on_tick(hud.on_world_tick)
-        self.constant_velocity_enabled = False
-        self.doors_are_open = False
 
     def restart(self):
         self.player_max_speed = 1.589
@@ -114,6 +115,7 @@ class World(object):
             blueprint.set_attribute('driver_id', driver_id)
         if blueprint.has_attribute('is_invincible'):
             blueprint.set_attribute('is_invincible', 'true')
+
         # set the max speed
         if blueprint.has_attribute('speed'):
             self.player_max_speed = float(blueprint.get_attribute('speed').recommended_values[1])
@@ -196,7 +198,6 @@ class World(object):
 # ==============================================================================
 # -- KeyboardControl -----------------------------------------------------------
 # ==============================================================================
-
 
 class KeyboardControl(object):
     """Class that handles keyboard input."""
@@ -281,7 +282,6 @@ class KeyboardControl(object):
 # ==============================================================================
 # -- HUD -----------------------------------------------------------------------
 # ==============================================================================
-
 
 class HUD(object):
     def __init__(self, width, height):
@@ -557,8 +557,10 @@ class CameraManager(object):
 # ==============================================================================
 
 def game_loop(args):
+
     pygame.init()
     pygame.font.init()
+
     world = None
     original_settings = None
 
@@ -582,6 +584,7 @@ def game_loop(args):
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
         display.fill((0,0,0))
+
         pygame.display.flip()
 
         hud = HUD(args.width, args.height)
@@ -594,14 +597,19 @@ def game_loop(args):
             sim_world.wait_for_tick()
 
         clock = pygame.time.Clock()
+
         while True:
             if args.sync:
                 sim_world.tick()
+
             clock.tick_busy_loop(60)
+
             if controller.parse_events(client, world, clock, args.sync):
                 return
+
             world.tick(clock)
             world.render(display)
+
             pygame.display.flip()
 
     finally:
@@ -615,27 +623,26 @@ def game_loop(args):
         pygame.quit()
 
 
-def main():
-    argparser = argparse.ArgumentParser(
-        description='CARLA Manual Control Client')
-    argparser.add_argument(
-        '--sync',
-        action='store_true',
-        help='Activate synchronous mode execution')
-    args = argparser.parse_args()
+# ==============================================================================
+# -- main() --------------------------------------------------------------------
+# ==============================================================================
 
-    args.autopilot = False
-    args.gamma = 2.2
-    args.width, args.height = 1280, 720
+def main():
 
     print(__doc__)
 
+    args = lambda: None
+
+    args.sync = False
+    args.autopilot = False
+
+    args.gamma = 2.2
+    args.width, args.height = 1280, 720
+
     try:
         game_loop(args)
-
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
-
 
 if __name__ == '__main__':
 
