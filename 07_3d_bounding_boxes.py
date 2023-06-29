@@ -91,6 +91,7 @@ fov = camera_bp.get_attribute("fov").as_float()
 K   = build_projection_matrix(image_w, image_h, fov)
 K_b = build_projection_matrix(image_w, image_h, fov, is_behind_camera=True)
 
+npc_vehicles = []
 for i in range(20):
     vehicle_bp = bp_lib.filter('vehicle')
 
@@ -100,6 +101,20 @@ for i in range(20):
 
     if npc:
         npc.set_autopilot(True)
+        npc_vehicles.append(npc)
+
+# Retrieve all the objects of the level
+car_objects = world.get_environment_objects(carla.CityObjectLabel.Car) # doesn't have filter by type yet
+truck_objects = world.get_environment_objects(carla.CityObjectLabel.Truck) # doesn't have filter by type yet
+bus_objects = world.get_environment_objects(carla.CityObjectLabel.Bus) # doesn't have filter by type yet
+
+env_object_ids = []
+
+for obj in (car_objects + truck_objects + bus_objects):
+    env_object_ids.append(obj.id)
+
+# Disable all static vehicles
+world.enable_environment_objects(env_object_ids, False) 
 
 edges = [[0,1], [1,3], [3,2], [2,0], [0,4], [4,5], [5,1], [5,7], [7,6], [6,4], [6,2], [7,3]]
 
@@ -140,13 +155,15 @@ while True:
         # Get the camera matrix 
         world_2_camera = np.array(camera.get_transform().get_inverse_matrix())
 
-        for npc in world.get_actors().filter('*vehicle*'):
+        for npc in npc_vehicles:
 
             # Filter out the ego vehicle
             if npc.id != vehicle.id:
 
+                npc_transform = npc.transform if isinstance(npc, carla.EnvironmentObject) else npc.get_transform()
+
                 bb = npc.bounding_box
-                dist = npc.get_transform().location.distance(vehicle.get_transform().location)
+                dist = npc_transform.location.distance(vehicle.get_transform().location)
 
                 # Filter for the vehicles within 50m
                 if dist < 50:
@@ -155,10 +172,10 @@ while True:
                     # and the other vehicle. We threshold this dot product
                     # to limit to drawing bounding boxes IN FRONT OF THE CAMERA
                     vehicle_forward_vec = vehicle.get_transform().get_forward_vector()
-                    ray = npc.get_transform().location - vehicle.get_transform().location
+                    ray = npc_transform.location - vehicle.get_transform().location
 
-                    if vehicle_forward_vec.dot(ray) > 1:
-                        verts = [v for v in bb.get_world_vertices(npc.get_transform())]
+                    if vehicle_forward_vec.dot(ray) > 0:
+                        verts = [v for v in bb.get_world_vertices(npc_transform)]
                         for edge in edges:
                             p1 = get_image_point(verts[edge[0]], K, world_2_camera)
                             p2 = get_image_point(verts[edge[1]],  K, world_2_camera)
