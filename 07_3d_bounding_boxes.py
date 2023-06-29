@@ -32,17 +32,12 @@ vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
 camera_bp = bp_lib.find('sensor.camera.rgb')
 camera_init_trans = carla.Transform(carla.Location(z=2))
 camera = world.spawn_actor(camera_bp, camera_init_trans, attach_to=vehicle)
-vehicle.set_autopilot(True)
-
-# Set up the simulator in synchronous mode
-settings = world.get_settings()
-settings.synchronous_mode = True # Enables synchronous mode
-settings.fixed_delta_seconds = 0.05
-world.apply_settings(settings)
 
 # Create a queue to store and retrieve the sensor data
 image_queue = queue.Queue()
 camera.listen(image_queue.put)
+
+vehicle.set_autopilot(True)
 
 # Part 2
 
