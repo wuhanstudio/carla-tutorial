@@ -37,8 +37,6 @@ camera = world.spawn_actor(camera_bp, camera_init_trans, attach_to=vehicle)
 image_queue = queue.Queue()
 camera.listen(image_queue.put)
 
-vehicle.set_autopilot(True)
-
 # Part 2
 
 def build_projection_matrix(w, h, fov, is_behind_camera=False):
@@ -139,6 +137,8 @@ def clear():
     print("Vehicles Destroyed.")
 
 # Main Loop
+vehicle.set_autopilot(True)
+
 while True:
     try:
         world.tick()
@@ -191,11 +191,10 @@ while True:
                             cam_forward_vec = camera.get_transform().get_forward_vector()
 
                             # One of the vertex is behind the camera
-                            if (not (cam_forward_vec.dot(ray0) > 0)) or (not (cam_forward_vec.dot(ray1) > 0)):
-                                if not p1_in_canvas:
-                                    p1 = get_image_point(verts[edge[0]], K_b, world_2_camera)
-                                if not p2_in_canvas:
-                                    p2 = get_image_point(verts[edge[1]], K_b, world_2_camera)
+                            if not (cam_forward_vec.dot(ray0) > 0):
+                                p1 = get_image_point(verts[edge[0]], K_b, world_2_camera)
+                            if not (cam_forward_vec.dot(ray1) > 0):
+                                p2 = get_image_point(verts[edge[1]], K_b, world_2_camera)
 
                             cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
 
