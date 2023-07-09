@@ -80,15 +80,16 @@ while True:
 
         # Plot velocities
         velocities.append(lon_vel)
-        
+
+        plt.clf()
+
         plt.plot(velocities)
         plt.scatter(range(len(velocities)), velocities)
-
         plt.ylim(0, 60)
         plt.ylabel('velocity (km/h)')
         plt.draw()
+
         plt.pause(0.01)
-        plt.clf()
 
         # Apply navigation control
         vehicle.apply_control(agent.run_step())
