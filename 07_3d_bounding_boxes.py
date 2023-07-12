@@ -89,7 +89,6 @@ fov = camera_bp.get_attribute("fov").as_float()
 K   = build_projection_matrix(image_w, image_h, fov)
 K_b = build_projection_matrix(image_w, image_h, fov, is_behind_camera=True)
 
-npc_vehicles = []
 for i in range(20):
     vehicle_bp = bp_lib.filter('vehicle')
 
@@ -99,7 +98,6 @@ for i in range(20):
 
     if npc:
         npc.set_autopilot(True)
-        npc_vehicles.append(npc)
 
 # Retrieve all the objects of the level
 car_objects = world.get_environment_objects(carla.CityObjectLabel.Car) # doesn't have filter by type yet
@@ -155,10 +153,10 @@ while True:
         # Get the camera matrix 
         world_2_camera = np.array(camera.get_transform().get_inverse_matrix())
 
-        for npc in npc_vehicles:
+        for npc in world.get_actors().filter('*vehicle*'):
 
             # Filter out the ego vehicle
-            if npc.id != vehicle.id:
+            if npc.is_alive and npc.id != vehicle.id:
 
                 npc_transform = npc.transform if isinstance(npc, carla.EnvironmentObject) else npc.get_transform()
 
