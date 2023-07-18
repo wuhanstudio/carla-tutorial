@@ -1,6 +1,6 @@
 ## Carla Tutorial (Python API)
 
-[![](https://img.shields.io/badge/Documentation-brightgreen)](https://blog.wuhanstudio.uk/blog/carla-tutorial/)
+[![](https://img.shields.io/badge/Documentation-brightgreen)](https://blog.wuhanstudio.uk/blog/carla-tutorial-basic/)
 
 Please use Carla version 0.9.14 or other versions with compatible APIs
 
