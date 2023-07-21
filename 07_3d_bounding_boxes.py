@@ -175,24 +175,27 @@ while True:
                     if vehicle_forward_vec.dot(ray) > 0:
                         verts = [v for v in bb.get_world_vertices(npc_transform)]
                         for edge in edges:
-                            p1 = get_image_point(verts[edge[0]], K, world_2_camera)
-                            p2 = get_image_point(verts[edge[1]],  K, world_2_camera)
+                            ray0 = verts[edge[0]] - camera.get_transform().location
+                            ray1 = verts[edge[1]] - camera.get_transform().location
+
+                            cam_forward_vec = camera.get_transform().get_forward_vector()
+
+                            # One of the vertex is behind the camera
+                            if not (cam_forward_vec.dot(ray0) > 0):
+                                p1 = get_image_point(verts[edge[0]], K_b, world_2_camera)
+                            else:
+                                p1 = get_image_point(verts[edge[0]], K, world_2_camera)
+
+                            if not (cam_forward_vec.dot(ray1) > 0):
+                                p2 = get_image_point(verts[edge[1]], K_b, world_2_camera)
+                            else:
+                                p2 = get_image_point(verts[edge[1]],  K, world_2_camera)
 
                             p1_in_canvas = point_in_canvas(p1, image_h, image_w)
                             p2_in_canvas = point_in_canvas(p2, image_h, image_w)
 
                             if not p1_in_canvas and not p2_in_canvas:
                                 continue
-
-                            ray0 = verts[edge[0]] - camera.get_transform().location
-                            ray1 = verts[edge[1]] - camera.get_transform().location
-                            cam_forward_vec = camera.get_transform().get_forward_vector()
-
-                            # One of the vertex is behind the camera
-                            if not (cam_forward_vec.dot(ray0) > 0):
-                                p1 = get_image_point(verts[edge[0]], K_b, world_2_camera)
-                            if not (cam_forward_vec.dot(ray1) > 0):
-                                p2 = get_image_point(verts[edge[1]], K_b, world_2_camera)
 
                             cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
 
