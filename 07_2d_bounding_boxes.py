@@ -216,7 +216,7 @@ while True:
                                 continue
                             
                             # Draw 3D Bounding Boxes
-                            cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
+                            # cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
 
                             # Draw 2D Bounding Boxes
                             p1_temp, p2_temp = (p1.copy(), p2.copy())
