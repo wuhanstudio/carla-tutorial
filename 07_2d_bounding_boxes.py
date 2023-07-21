@@ -147,6 +147,9 @@ def clear():
 # Main Loop
 vehicle.set_autopilot(True)
 
+edges = [[0,1], [1,3], [3,2], [2,0], [0,4], [4,5], [5,1], [5,7], [7,6], [6,4], [6,2], [7,3]]
+
+
 while True:
     try:
         world.tick()
@@ -173,11 +176,11 @@ while True:
 
                 # Filter for the vehicles within 50m
                 if dist < 50:
+                    # Calculate the dot product between the forward vector
+                    # of the vehicle and the vector between the vehicle
+                    # and the other vehicle. We threshold this dot product
+                    # to limit to drawing bounding boxes IN FRONT OF THE CAMERA
 
-                # Calculate the dot product between the forward vector
-                # of the vehicle and the vector between the vehicle
-                # and the other vehicle. We threshold this dot product
-                # to limit to drawing bounding boxes IN FRONT OF THE CAMERA
                     forward_vec = vehicle.get_transform().get_forward_vector()
                     ray = npc.get_transform().location - vehicle.get_transform().location
 
@@ -188,76 +191,74 @@ while True:
                         points_image = []
 
                         for vert in verts:
-
                             ray0 = vert - camera.get_transform().location
                             cam_forward_vec = camera.get_transform().get_forward_vector()
 
-                            if not (cam_forward_vec.dot(ray0) > 0):
-                                p = get_image_point(vert, K_b, world_2_camera)
-                            else:
+                            if (cam_forward_vec.dot(ray0) > 0):
                                 p = get_image_point(vert, K, world_2_camera)
+                            else:
+                                p = get_image_point(vert, K_b, world_2_camera)
 
                             points_image.append(p)
 
-                        x_max = -10000
-                        x_min = 10000
-                        y_max = -10000
-                        y_min = 10000
+                        x_min, x_max = 10000, -10000
+                        y_min, y_max = 10000, -10000
 
-                        vanishing_p = get_vanishing_point(points_image[0], points_image[4], points_image[3], points_image[7])
+                        for edge in edges:
+                            p1 = points_image[edge[0]]
+                            p2 = points_image[edge[1]]
 
-                        for p in points_image:
-                            if not point_in_canvas(p, image_h, image_w):
-                                k = (p[1] - vanishing_p[1]) / (p[0] - vanishing_p[0])
-                                # x > width
-                                if p[0] >= image.width:
-                                    y = k * (image.width - vanishing_p[0]) + vanishing_p[1]
-                                    if y >= image.height:
-                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = image.height - 1
-                                    elif y <= 0:
-                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = 0
-                                    else:
-                                        p[0] = image.width - 1
-                                        p[1] = y
-                                # x in [0, width]
-                                elif p[0] >= 0:
-                                    y = k * (p[0] - vanishing_p[0]) + vanishing_p[1]
-                                    if y >= image.height:
-                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = image.height - 1
-                                    elif y <= 0:
-                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = 0
-                                    else:    
-                                        p[0] = image.width - 1
-                                        p[1] = y
-                                # x < 0
+                            p1_in_canvas = point_in_canvas(p1, image_h, image_w)
+                            p2_in_canvas = point_in_canvas(p2, image_h, image_w)
+
+                            # Both points are out of the canvas
+                            if not p1_in_canvas and not p2_in_canvas:
+                                continue
+                            
+                            # Draw 3D Bounding Boxes
+                            cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
+
+                            # Draw 2D Bounding Boxes
+                            p1_temp, p2_temp = (p1.copy(), p2.copy())
+
+                            # One of the point is out of the canvas
+                            if not (p1_in_canvas and p2_in_canvas):
+                                p = [0, 0]
+
+                                # Find the intersection of the edge with the window border
+                                p_in_canvas, p_not_in_canvas = (p1, p2) if p1_in_canvas else (p2, p1)
+                                k = (p_not_in_canvas[1] - p_in_canvas[1]) / (p_not_in_canvas[0] - p_in_canvas[0])
+
+                                x = np.clip(p_not_in_canvas[0], 0, image.width)
+                                y = k * (x - p_in_canvas[0]) + p_in_canvas[1]
+
+                                if y >= image.height:
+                                    p[0] = (image.height - p_in_canvas[1]) / k + p_in_canvas[0]
+                                    p[1] = image.height - 1
+                                elif y <= 0:
+                                    p[0] = (0 - p_in_canvas[1]) / k + p_in_canvas[0]
+                                    p[1] = 0
                                 else:
-                                    y = k * (0 - vanishing_p[0]) + vanishing_p[1]
-                                    if y >= image.height:
-                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = image.height - 1
-                                    elif y <= 0:
-                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
-                                        p[1] = 0
-                                    else:
-                                        p[0] = 0
-                                        p[1] = y
+                                    p[0] = image.width - 1 if x == image.width else 0
+                                    p[1] = y
+
+                                p1_temp, p2_temp = (p, p_in_canvas)
 
                             # Find the rightmost vertex
-                            if p[0] > x_max:
-                                x_max = p[0]
+                            x_max = p1_temp[0] if p1_temp[0] > x_max else x_max
+                            x_max = p2_temp[0] if p2_temp[0] > x_max else x_max
+
                             # Find the leftmost vertex
-                            if p[0] < x_min:
-                                x_min = p[0]
+                            x_min = p1_temp[0] if p1_temp[0] < x_min else x_min
+                            x_min = p2_temp[0] if p2_temp[0] < x_min else x_min
+
                             # Find the highest vertex
-                            if p[1] > y_max:
-                                y_max = p[1]
-                            # Find the lowest  vertex
-                            if p[1] < y_min:
-                                y_min = p[1]
+                            y_max = p1_temp[1] if p1_temp[1] > y_max else y_max
+                            y_max = p2_temp[1] if p2_temp[1] > y_max else y_max
+
+                            # Find the lowest vertex
+                            y_min = p1_temp[1] if p1_temp[1] < y_min else y_min
+                            y_min = p2_temp[1] if p2_temp[1] < y_min else y_min
 
                         # Exclude very small bounding boxes
                         if (y_max - y_min) * (x_max - x_min) > 100 and (x_max - x_min) > 20:
