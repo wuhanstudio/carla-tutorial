@@ -120,6 +120,16 @@ def point_in_canvas(pos, img_h, img_w):
         return True
     return False
 
+def get_vanishing_point(p1, p2, p3, p4):
+
+    k1 = (p4[1] - p3[1]) / (p4[0] - p3[0])
+    k2 = (p2[1] - p1[1]) / (p2[0] - p1[0])
+
+    vp_x = (k1 * p3[0] - k2 * p1[0] + p1[1] - p3[1]) / (k1 - k2)
+    vp_y = k1 * (vp_x - p3[0]) + p3[1]
+
+    return [vp_x, vp_y]
+
 def clear():
     settings = world.get_settings()
     settings.synchronous_mode = False # Disables synchronous mode
@@ -172,31 +182,69 @@ while True:
                     ray = npc.get_transform().location - vehicle.get_transform().location
 
                     if forward_vec.dot(ray) > 0:
+
                         verts = [v for v in bb.get_world_vertices(npc.get_transform())]
-                        x_max = -10000
-                        x_min = 10000
-                        y_max = -10000
-                        y_min = 10000
+
+                        points_image = []
 
                         for vert in verts:
-                            p = get_image_point(vert, K, world_2_camera)
-                            p_in_canvas = point_in_canvas(p, image_h, image_w)
 
                             ray0 = vert - camera.get_transform().location
                             cam_forward_vec = camera.get_transform().get_forward_vector()
 
                             if not (cam_forward_vec.dot(ray0) > 0):
                                 p = get_image_point(vert, K_b, world_2_camera)
+                            else:
+                                p = get_image_point(vert, K, world_2_camera)
 
-                            if p[0] < 0:
-                                p[0] = 0
-                            if p[0] > image.width:
-                                p[0] = image.width
-                            
-                            if p[1] < 0:
-                                p[1] = 0
-                            if p[1] > image.height:
-                                p[1] = image.height
+                            points_image.append(p)
+
+                        x_max = -10000
+                        x_min = 10000
+                        y_max = -10000
+                        y_min = 10000
+
+                        vanishing_p = get_vanishing_point(points_image[0], points_image[4], points_image[3], points_image[7])
+
+                        for p in points_image:
+                            if not point_in_canvas(p, image_h, image_w):
+                                k = (p[1] - vanishing_p[1]) / (p[0] - vanishing_p[0])
+                                # x > width
+                                if p[0] >= image.width:
+                                    y = k * (image.width - vanishing_p[0]) + vanishing_p[1]
+                                    if y >= image.height:
+                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = image.height - 1
+                                    elif y <= 0:
+                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = 0
+                                    else:
+                                        p[0] = image.width - 1
+                                        p[1] = y
+                                # x in [0, width]
+                                elif p[0] >= 0:
+                                    y = k * (p[0] - vanishing_p[0]) + vanishing_p[1]
+                                    if y >= image.height:
+                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = image.height - 1
+                                    elif y <= 0:
+                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = 0
+                                    else:    
+                                        p[0] = image.width - 1
+                                        p[1] = y
+                                # x < 0
+                                else:
+                                    y = k * (0 - vanishing_p[0]) + vanishing_p[1]
+                                    if y >= image.height:
+                                        p[0] = (image.height - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = image.height - 1
+                                    elif y <= 0:
+                                        p[0] = (0 - vanishing_p[1]) / k + vanishing_p[0]
+                                        p[1] = 0
+                                    else:
+                                        p[0] = 0
+                                        p[1] = y
 
                             # Find the rightmost vertex
                             if p[0] > x_max:
@@ -211,10 +259,13 @@ while True:
                             if p[1] < y_min:
                                 y_min = p[1]
 
-                        cv2.line(img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,0,255, 255), 1)
-                        cv2.line(img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,0,255, 255), 1)
-                        cv2.line(img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,0,255, 255), 1)
-                        cv2.line(img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,0,255, 255), 1)
+                        # Exclude very small bounding boxes
+                        if (y_max - y_min) * (x_max - x_min) > 100 and (x_max - x_min) > 20:
+                            if point_in_canvas((x_min, y_min), image_h, image_w) and point_in_canvas((x_max, y_max), image_h, image_w):
+                                cv2.line(img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,0,255, 255), 1)
+                                cv2.line(img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,0,255, 255), 1)
+                                cv2.line(img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,0,255, 255), 1)
+                                cv2.line(img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,0,255, 255), 1)
 
         cv2.imshow('3D Bounding Boxes',img)
 
