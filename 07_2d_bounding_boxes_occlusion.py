@@ -60,11 +60,6 @@ def depth_camera_callback(image, depth_image_queue):
 
     depth_image_queue.put(gray_depth)
 
-def depth_to_array(image):
-    """
-    From raw depth data to depth image
-    """
-
 # Create a queue to store and retrieve the sensor data
 image_queue = queue.Queue()
 camera.listen(image_queue.put)
