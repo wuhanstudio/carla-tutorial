@@ -8,7 +8,7 @@ import numpy as np
 
 from utils.projection import *
 
-PRELIMINARY_FILTER_DISTANCE = 100
+PRELIMINARY_FILTER_DISTANCE = 50
 
 # Part 1
 
@@ -17,20 +17,20 @@ world  = client.get_world()
 
 # Set up the simulator in synchronous mode
 settings = world.get_settings()
-settings.synchronous_mode = True # Enables synchronous mode
+settings.synchronous_mode = True  # Enables synchronous mode
 settings.fixed_delta_seconds = 0.05
 world.apply_settings(settings)
 
 # Get the world spectator
-spectator = world.get_spectator() 
+spectator = world.get_spectator()
 
 # Get the map spawn points
 spawn_points = world.get_map().get_spawn_points()
 
 # spawn vehicle
-bp_lib = world.get_blueprint_library()
-vehicle_bp =bp_lib.find('vehicle.lincoln.mkz_2020')
-vehicle = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
+bp_lib     = world.get_blueprint_library()
+vehicle_bp = bp_lib.find('vehicle.lincoln.mkz_2020')
+vehicle    = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
 
 # spawn camera
 camera_init_trans = carla.Transform(carla.Location(z=2))
@@ -43,24 +43,26 @@ camera = world.spawn_actor(camera_bp, camera_init_trans, attach_to=vehicle)
 depth_camera_bp = world.get_blueprint_library().find('sensor.camera.depth')
 depth_camera = world.spawn_actor(depth_camera_bp, camera_init_trans, attach_to=vehicle)
 
+
 def depth_camera_callback(image, depth_image_queue):
     # image.convert(carla.ColorConverter.LogarithmicDepth)
-    
+
     array = np.frombuffer(image.raw_data, dtype=np.dtype("uint8"))
     array = np.reshape(array, (image.height, image.width, 4))  # RGBA format
-    
+
     array = array[:, :, :3]     # Take only RGB
     array = array[:, :, ::-1]   # BGR
-  
+
     array = array.astype(np.float32)  # 2ms
 
-    gray_depth = (  (array[:, :, 0] 
-                    + array[:, :, 1] * 256.0 
-                    + array[:, :, 2] * 256.0 * 256.0) / ((256.0 * 256.0 * 256.0) - 1)
-                )  # 2.5ms
+    gray_depth = ((array[:, :, 0]
+                   + array[:, :, 1] * 256.0
+                   + array[:, :, 2] * 256.0 * 256.0) / ((256.0 * 256.0 * 256.0) - 1)
+                  )  # 2.5ms
     gray_depth = 1000 * gray_depth
 
     depth_image_queue.put(gray_depth)
+
 
 # Create a queue to store and retrieve the sensor data
 image_queue = queue.Queue()
@@ -72,7 +74,8 @@ depth_camera.listen(lambda image: depth_camera_callback(image, depth_image_queue
 # Part 2
 
 # Remember the edge pairs
-edges = [[0,1], [1,3], [3,2], [2,0], [0,4], [4,5], [5,1], [5,7], [7,6], [6,4], [6,2], [7,3]]
+edges = [[0, 1], [1, 3], [3, 2], [2, 0], [0, 4], [4, 5],
+         [5, 1], [5, 7], [7, 6], [6, 4], [6, 2], [7, 3]]
 
 # Get the world to camera matrix
 world_2_camera = np.array(camera.get_transform().get_inverse_matrix())
@@ -97,9 +100,9 @@ for i in range(20):
         npc.set_autopilot(True)
 
 # Retrieve all the objects of the level
-car_objects = world.get_environment_objects(carla.CityObjectLabel.Car) # doesn't have filter by type yet
-truck_objects = world.get_environment_objects(carla.CityObjectLabel.Truck) # doesn't have filter by type yet
-bus_objects = world.get_environment_objects(carla.CityObjectLabel.Bus) # doesn't have filter by type yet
+car_objects = world.get_environment_objects(carla.CityObjectLabel.Car)      # doesn't have filter by type yet
+truck_objects = world.get_environment_objects(carla.CityObjectLabel.Truck)  # doesn't have filter by type yet
+bus_objects = world.get_environment_objects(carla.CityObjectLabel.Bus)      # doesn't have filter by type yet
 
 env_object_ids = []
 
@@ -107,11 +110,12 @@ for obj in (car_objects + truck_objects + bus_objects):
     env_object_ids.append(obj.id)
 
 # Disable all static vehicles
-world.enable_environment_objects(env_object_ids, False) 
+world.enable_environment_objects(env_object_ids, False)
+
 
 def clear():
     settings = world.get_settings()
-    settings.synchronous_mode = False # Disables synchronous mode
+    settings.synchronous_mode = False  # Disables synchronous mode
     settings.fixed_delta_seconds = None
     world.apply_settings(settings)
 
@@ -124,6 +128,7 @@ def clear():
 
     print("Vehicles Destroyed.")
 
+
 # Main Loop
 vehicle.set_autopilot(True)
 
@@ -131,9 +136,12 @@ while True:
     try:
         world.tick()
 
-        # Move the spectator to the top of the vehicle 
-        transform = carla.Transform(vehicle.get_transform().transform(carla.Location(x=-4,z=50)), carla.Rotation(yaw=-180, pitch=-90)) 
-        spectator.set_transform(transform) 
+        # Move the spectator to the top of the vehicle
+        transform = carla.Transform(
+            vehicle.get_transform().transform(carla.Location(x=-4, z=50)), 
+            carla.Rotation(yaw=-180, pitch=-90)
+        )
+        spectator.set_transform(transform)
 
         # Retrieve and reshape the image
         image = image_queue.get()
@@ -141,7 +149,7 @@ while True:
 
         img = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
 
-        # Get the camera matrix 
+        # Get the camera matrix
         world_2_camera = np.array(camera.get_transform().get_inverse_matrix())
         extrinsic = camera.get_transform().get_matrix()
 
@@ -194,9 +202,9 @@ while True:
                             # Both points are out of the canvas
                             if not p1_in_canvas and not p2_in_canvas:
                                 continue
-                            
+
                             # Draw 3D Bounding Boxes
-                            # cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255,0,0, 255), 1)        
+                            # cv2.line(img, (int(p1[0]),int(p1[1])), (int(p2[0]),int(p2[1])), (255, 255, 255), 1)
 
                             # Draw 2D Bounding Boxes
                             p1_temp, p2_temp = (p1.copy(), p2.copy())
@@ -264,19 +272,20 @@ while True:
                                 else:
                                     occluded = 2
 
-                                # BGR - Visible: Blue, Partially Visible: Yellow, Invisible: Red
-                                colors = [(255, 0, 0), (0, 255, 255), (0, 0, 255)]
+                                if ((y_max - y_min) / (x_max - x_min) < 1.6):
+                                    # BGR - Visible: Blue, Partially Visible: Yellow, Invisible: Red
+                                    colors = [(255, 0, 0), (0, 255, 255), (0, 0, 255)]
 
-                                cv2.line(img, (int(x_min), int(y_min)),
-                                        (int(x_max), int(y_min)), colors[occluded], 1)
-                                cv2.line(img, (int(x_min), int(y_max)),
-                                        (int(x_max), int(y_max)), colors[occluded], 1)
-                                cv2.line(img, (int(x_min), int(y_min)),
-                                        (int(x_min), int(y_max)), colors[occluded], 1)
-                                cv2.line(img, (int(x_max), int(y_min)),
-                                        (int(x_max), int(y_max)), colors[occluded], 1)
+                                    cv2.line(img, (int(x_min), int(y_min)),
+                                             (int(x_max), int(y_min)), colors[occluded], 1)
+                                    cv2.line(img, (int(x_min), int(y_max)),
+                                             (int(x_max), int(y_max)), colors[occluded], 1)
+                                    cv2.line(img, (int(x_min), int(y_min)),
+                                             (int(x_min), int(y_max)), colors[occluded], 1)
+                                    cv2.line(img, (int(x_max), int(y_min)),
+                                             (int(x_max), int(y_max)), colors[occluded], 1)
 
-        cv2.imshow('2D Bounding Boxes',img)
+        cv2.imshow('2D Bounding Boxes', img)
 
         if cv2.waitKey(1) == ord('q'):
             clear()
